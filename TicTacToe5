@@ -1,0 +1,234 @@
+'''
++=======================================================================================+
+|   			                TIC-TAC-TOE 	                                |
+|   				        April 28 2015 				        |
++=======================================================================================+
+'''
+def setUpCanvas(root): # These are the REQUIRED magic lines to enter graphics mode.
+    root.title("A Tk/Python Graphics Program") # Your screen size may be different from 1270 x 780.
+    canvas = Canvas(root, width = 500, height = 500, bg = 'NAVY')
+    canvas.pack(expand = YES, fill = BOTH)
+    return canvas
+
+def printElapsedTime (msg = 'time'):
+    length = 30
+    msg = msg [:length]
+    tab = '.'*(length-len(msg)) # <-- msg length truncated at 30 chars
+    print('--' + msg.upper() + tab + ' ', end = '')
+    time = round(clock() - START, 1) # START is global constant.
+    print( chr(9200) + '%2d'%int(time/60), ' min :', '%4.1f'%round(time%60, 1), \
+           ' sec', sep = '')   
+#------------------------------------------------------------------------------------TIC-TAC-TOE--
+def printNameAndDate():
+    print('\t\t+--------------------------------+')
+    print('\t\t|          TIC-TAC-TOE           +')
+    print('\t\t|         Alyssa Herbst          +')
+    print('\t\t|         April 28 2015          +')
+    print('\t\t+--------------------------------+')
+##
+##  
+##
+def stringBoard(perm, limit):
+    newBoard = '---------'
+    for n in range(limit + 1):
+        if n % 2 == 0:
+            newBoard = insertX(newBoard, perm.index(n))#This is a 1 line function
+        else:
+            newBoard = insertO(newBoard, perm.index(n))#This is a 1 line function
+    return newBoard
+
+def insertX(board, loc):
+    return ''.join([board[:loc], 'X', board[loc+1:]])
+
+def insertO(board, loc):
+    return ''.join([board[:loc], 'O', board[loc+1:]])
+
+def isWin(b) : #If any of the boards are 3 in a row, return True
+    return    ((b[2] == b[4] == b[6]) and (b[2] != '-'))\
+           or ((b[0] == b[4] == b[8]) and (b[0] != '-'))\
+           or ((b[0] == b[1] == b[2]) and (b[0] != '-'))\
+           or ((b[3] == b[4] == b[5]) and (b[3] != '-'))\
+           or ((b[6] == b[7] == b[8]) and (b[6] != '-'))\
+           or ((b[0] == b[3] == b[6]) and (b[0] != '-'))\
+           or ((b[1] == b[4] == b[7]) and (b[1] != '-'))\
+           or ((b[2] == b[5] == b[8]) and (b[2] != '-'))
+
+
+def displayBoard(board):
+    b = board.replace('-', ' ')
+    #b = b.replace('X', chr(9587))
+    #b = b.replace('O', chr(9711))
+    print()
+    print('\t\t\t' ,b[0], '|', b[1], '|', b[2])
+    print('\t\t\t---+---+---')
+    print('\t\t\t' ,b[3], '|', b[4], '|', b[5])
+    print('\t\t\t---+---+---')
+    print('\t\t\t' ,b[6], '|', b[7], '|', b[8])
+    print()
+       
+def createDataBase2() :
+    database = {'---------': [10, 10, 10, 10, 10, 10, 10, 10, 10] }
+    sequence = [0, 1, 2, 3, 4, 5, 6, 7, 8,]
+    filledBoards = list(permutations(sequence, 9))
+    #print('PERMUTATIONS = ', len(filledBoards))
+    for currentBoard in filledBoards:
+        for currentLen in range(0,8):
+            newBoard = stringBoard(currentBoard, currentLen)
+            if not isWin(newBoard):
+                probabilityList = []
+                for i in range(0, 9):
+                    if newBoard[i] == '-':
+                        probabilityList.append(10)
+                    else:
+                        probabilityList.append(0)
+                database[newBoard] = probabilityList
+    print('DATABASE LENGTH = ', len(database))
+    return database
+
+def doWin(database, playList):
+    for currentPlay in playList:
+        currentBoard = currentPlay[0]
+        playPosition = currentPlay[1]
+        database[currentBoard][playPosition] += 3
+
+def doLose(database, playList):
+    for currentPlay in playList:
+        currentBoard = currentPlay[0]
+        playPosition = currentPlay[1]
+        if database[currentBoard][playPosition] > 2: #2 will be minimum to avoid 0 or negative weight
+            database[currentBoard][playPosition] -= 1
+    
+def doDraw(database, playList):
+    for currentPlay in playList:
+        currentBoard = currentPlay[0]
+        playPosition = currentPlay[1]
+        database[currentBoard][playPosition] += 1
+
+def playTrainingGame(database):
+    board = '---------'
+    xPlays = []
+    oPlays = []
+    currentPlayer = 'X'
+    gotWin = False
+    for moveNum in range(0, 9):
+        currentWeights = database[board]
+        sumWeights = 0
+        for weight in currentWeights:
+            sumWeights += weight
+        randomNumber = randint(0, sumWeights)
+        currentSum = 0
+        for index in range(0, len(currentWeights)):
+            currentSum += currentWeights[index]
+            if randomNumber <= currentSum and currentWeights[index] > 0:
+                break
+        if currentPlayer == 'X':
+            xPlays.append([board, index])
+            board = insertX(board, index)
+            if isWin(board):
+                gotWin = True
+                doWin(database, xPlays)
+                doLose(database, oPlays)
+                break
+            currentPlayer = 'O'
+        else:
+            oPlays.append([board, index])
+            board = insertO(board, index)
+            if isWin(board):
+                gotWin = True
+                doWin(database, oPlays)
+                doLose(database, xPlays)
+                break
+            currentPlayer = 'X'
+    if not gotWin:
+        doDraw(database, xPlays)
+        doDraw(database, oPlays)
+
+def playUserGame(database):
+    gotWin = False
+    board = '---------'
+    print ("You'll be X, you can go first")
+    displayBoard(board)
+    for i in range(0,5):
+        while True:
+            userMove = input ("Enter a position, 1 through 9   ")
+            if not str.isdigit(userMove):
+                print("Please enter a single digit, 1 through 9")
+            else:
+                userPosition = int (userMove)
+                if userPosition < 1 or userPosition > 9:
+                    print("You must choose a number between 1 and 9")
+                elif board[userPosition - 1:userPosition] != '-':
+                    print("Nope, you need to pick an empty spot")
+                else:
+                    print("OK")
+                    board = insertX(board, userPosition - 1)
+                    displayBoard(board)
+                    break
+        if isWin(board):
+            gotWin = True
+            print("Gosh darn it, you won!")
+            break
+        if i == 4:
+            break
+        currentWeights = database[board]
+        sumWeights = 0
+        for weight in currentWeights:
+            sumWeights += weight
+        randomNumber = randint(0, sumWeights)
+        currentSum = 0
+        for index in range(0, len(currentWeights)):
+            currentSum += currentWeights[index]
+            if randomNumber <= currentSum and currentWeights[index] > 0:
+                break
+        board = insertO(board, index)
+        displayBoard(board)
+        if isWin(board):
+            gotWin = True
+            print("Hey, I won!")
+            break
+            
+    if not gotWin:
+        print("Looks like a draw!")
+
+#------------------------------------------------------------------------------------TIC-TAC-TOE--
+#===========================================================================================
+#===========================================================================================
+#------------------------------------------------------------------------------------TIC-TAC-TOE--
+
+from random import choice, random, randint
+from tkinter import *
+from time    import clock
+from itertools import permutations
+root = Tk()
+#canvas = setUpCanvas(root)
+#------------------------------------------------------------------------------------TIC-TAC-TOE--
+
+START     = clock()
+#======================================= MAIN =======================================TIC-TAC-TOE==
+
+def main():
+    printNameAndDate()
+    print ("Building Database")
+    db = createDataBase2()
+    printElapsedTime('Created Database.')
+    print("Starting Training")
+    for i in range(0, 1000000):
+        playTrainingGame(db)
+    printElapsedTime('1,000,000 training games.')
+    #print(db)
+    while True:
+        while True:
+            yesNoInput = input ("Do you want to play a game? Y/N   ")
+            yesNoInput = yesNoInput.upper()
+            if yesNoInput != 'Y' and yesNoInput != 'N':
+                print ("Yes [Y] or No [N] please! Y/N")
+            else: break
+        if yesNoInput == 'Y':
+            playUserGame(db)
+        else:
+            print("Bye")
+            break
+    printElapsedTime('end of program.')
+    
+main()
+
